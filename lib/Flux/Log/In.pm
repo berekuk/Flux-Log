@@ -4,7 +4,7 @@ package Flux::Log::In;
 
 =head1 SYNOPSIS
 
-    $in = $log_storage->stream($cursor); # see Flux::Log and Flux::Log::Cursor for details
+    $in = $log_storage->in({ unrotate => { log => "/var/log/my.log", pos => "/tmp/pos" } });
 
     $line = $in->read; # read next line from log
 
@@ -24,54 +24,59 @@ package Flux::Log::In;
 
 use Moo;
 with
-    'Flux::In',
+    'Flux::In::Role::Easy',
     'Flux::In::Role::Lag',
     'Flux::Role::Description';
 
-use Type::Params;
-use Types::Standard qw(...);
-use Params::Validate qw(:all);
-use Carp;
+use Type::Params qw(validate);
+use Types::Standard qw( Int Str HashRef Object Optional );
 
-use Yandex::Unrotate;
+use Log::Unrotate;
 
-sub new {
-    my $class = shift;
+has '_unrotate_params' => (
+    is => 'ro',
+    isa => HashRef,
+    init_arg => 'unrotate',
+    required => 1,
+);
 
-    my $params = validate_with(
-        params => \@_,
-        spec => {
-            PosFile => {type => SCALAR},
-            LogFile => {type => SCALAR, optional => 1},
-        },
-        allow_extra => 1,
-    );
+has 'log' => (
+    is => 'ro',
+    isa => Str,
+    required => 1,
+);
 
-    my $unrotate = Yandex::Unrotate->new($params);
-    return bless {
-        unrotate => $unrotate,
-        params => $params,
-    } => $class;
-}
+has '_unrotate' => (
+    is => 'lazy',
+    isa => Object,
+    default => sub {
+        my $self = shift;
+        return Log::Unrotate->new({
+            log => $self->log,
+            %{ $self->_unrotate_params }
+        });
+    },
+);
 
 sub description {
     my $self = shift;
 
-    my $current_log = $self->{unrotate}->_log_file; # FIXME - incapsulation violation!
+    my $current_log = $self->_unrotate->_log_file; # FIXME - incapsulation violation!
     return
-        "pos: $self->{params}{PosFile}\n"
+        "pos: ".$self->_unrotate_params->{pos}."\n"
         ."log: $current_log";
 }
 
 sub clone {
     my $self = shift;
-    return __PACKAGE__->new($self->{params});
+    return __PACKAGE__->new({ unrotate => $self->_unrotate_params });
 }
 
-# do_read instead of read - Filterable role requires it
-sub do_read ($) {
-    my ($self) = @_;
-    return $self->{unrotate}->readline;
+sub read {
+    my $self = shift;
+    validate(\@_);
+
+    return $self->_unrotate->read;
 }
 
 =item C<< position() >>
@@ -81,9 +86,10 @@ Get current position.
 You can commit this stream later using this position instead of position at the moment of commit.
 
 =cut
-sub position($) {
-    my ($self) = @_;
-    return $self->{unrotate}->position;
+sub position {
+    my $self = shift;
+    validate(\@_);
+    return $self->_unrotate->position;
 }
 
 =item C<< lag() >>
@@ -92,8 +98,10 @@ Get log lag in bytes.
 
 =cut
 sub lag {
-    my ($self) = @_;
-    return $self->{unrotate}->lag;
+    my $self = shift;
+    validate(\@_);
+
+    return $self->_unrotate->lag;
 }
 
 =item C<< commit() >>
@@ -103,10 +111,11 @@ sub lag {
 Commit position in stream's cursor.
 
 =cut
-sub commit ($;$) {
-    my ($self, $position) = @_;
-    $self->SUPER::commit();
-    $self->{unrotate}->commit($position ? $position : ());
+sub commit {
+    my $self = shift;
+    my ($position) = validate(\@_, Optional[Int]);
+
+    $self->_unrotate->commit($position ? $position : ());
 }
 
 =back
