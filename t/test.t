@@ -106,4 +106,29 @@ sub clients :Test(3) {
     is_deeply([ $storage->client_names ], ['xxx', 'yyy'], "client_names returns all clients");
 }
 
+sub description :Tests {
+    my $storage = Flux::Log->new("tfiles/log");
+    is $storage->description, "log: tfiles/log", 'storage description';
+
+    is $storage->in('abc')->description, "pos: tfiles/log.pos/abc\nlog: tfiles/log", 'in description';
+
+    $storage->write("xxx\n");
+    $storage->commit;
+
+    my $in = $storage->in('abc');
+    $in->commit;
+
+    $storage->write("xxx2\n");
+    $storage->commit;
+
+    rename('tfiles/log' => 'tfiles/log.1');
+    $storage->write("yyy\n");
+    $storage->commit;
+
+    TODO: {
+        local $TODO = "unrotate->_log_file doesn't return the correct file";
+        is $in->description, "pos: tfiles/log.pos/abc\nlog: tfiles/log.1", 'in description - log file is the current reading file';
+    }
+}
+
 __PACKAGE__->new->runtests;
