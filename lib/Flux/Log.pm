@@ -19,13 +19,15 @@ C<Flux::Log> is similar to L<Flux::File>, but designed to work with logs (files 
 
 It supports safe writes to rotating logs, i.e. it will automatically switch to the new file instead of writing to C<foo.log.1>.
 
+Note that this module B<doesn't rotate logs by itself>. You have to use L<logrotate(8)> or it's replacement for that.
+
+You don't have to use this module to write logs. If some other program writes a log, you can use C<Flux::Log> to represent such log, and use it to generate input stream objects via C<< $storage->in($client_name) >>.
+
 =head1 NAMED CLIENTS
 
 C<Flux::Log> implements the L<Flux::Storage::Role::ClientList> role. It stores client's position in the I<$log.pos/> dir.
 
 For example, if your log is called I</var/log/my-app.log>, and you attempt to create an input stream by calling C<< $storage->in("abc") >>, I</var/log/my-app.log.pos/> dir will be created (if necessary), and position will be stored in I</var/log/my-app.log.pos/abc>.
-
-Note that this module B<doesn't rotate logs by itself>. You have to use L<logrotate(8)> or it's replacement for that.
 
 =cut
 
