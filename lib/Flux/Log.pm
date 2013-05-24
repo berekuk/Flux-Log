@@ -25,6 +25,8 @@ C<Flux::Log> implements the L<Flux::Storage::Role::ClientList> role. It stores c
 
 For example, if your log is called I</var/log/my-app.log>, and you attempt to create an input stream by calling C<< $storage->in("abc") >>, I</var/log/my-app.log.pos/> dir will be created (if necessary), and position will be stored in I</var/log/my-app.log.pos/abc>.
 
+Note that this module B<doesn't rotate logs by itself>. You have to use L<logrotate(8)> or it's replacement for that.
+
 =cut
 
 use Moo;
