@@ -105,39 +105,5 @@ sub clients :Test(3) {
     $in->commit;
     is_deeply([ $storage->client_names ], ['xxx', 'yyy'], "client_names returns all clients");
 }
+
 __PACKAGE__->new->runtests;
-
-
-__END__
-1) create stream
-
-Stream::Log::In->new({
-    LogFile => "/var/log/file",
-    PosFile => "/var/log/file.pos",
-});
-# + one call
-# + unrotate options
-# - named log
-# - named pos
-
-2) create stream from storage
-Stream::Log->new("/var/log/file")->stream(Stream::Log::Cursor->new("/var/log/file.pos"));
-# or:
-storage("file")->stream(Stream::Log::Cursor->new("/var/log/file.pos"));
-# or:
-storage("file")->stream(cursor("file.pos"))
-# or:
-stream("file.pos")
-
-(in catalog:
-# storage.d/file:
-Stream::Log->new("/var/log/file");
-# cursor.d/file.pos:
-Stream::Log::Cursor->new("/var/log/file.pos");
-
-# + can be really short
-# + catalog names
-# - no unrotate options
-# - many different files
-# - not so easy for unrotate users
-
